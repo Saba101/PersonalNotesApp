@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const _ = require('lodash');
-// const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 var UserSchema = new mongoose.Schema({
@@ -117,9 +117,13 @@ UserSchema.methods.generateLoginToken = function () {
     var status = true;
 
     var token = jwt.sign({ _id: user._id.toHexString(), status }, process.env.JWT_LOGIN_SECRET).toString();
-    user.login.push({ status, token });
+    user.login.status = true;
+    user.login.token = token;
+
+    console.log(user);
 
     return user.save().then(() => {
+        console.log("Login successful!");
         return token;
     });
 };
@@ -131,6 +135,7 @@ UserSchema.statics.findByToken = function (token) {
     try {
         decoded = jwt.verify(token, process.env.JWT_LOGIN_SECRET);
     } catch (e) {
+        console.log("Bad Request - Token isn't yours?");
         return Promise.reject();
     }
 
@@ -153,6 +158,7 @@ UserSchema.statics.findByCredentials = function (email, password) {
                 if (res) {
                     resolve(user);
                 } else {
+                    console.log("Password Issue!");
                     reject();
                 }
             })

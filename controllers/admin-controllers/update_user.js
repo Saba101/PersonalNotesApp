@@ -1,5 +1,6 @@
 const { User } = require('../../models/users');
 const _ = require('lodash');
+const { ObjectID } = require('mongodb');
 
 var updateUser = (req, res) => {
     var id = req.params.id;
@@ -24,8 +25,12 @@ var updateUser = (req, res) => {
                 res.status(404).send();
                 return console.log('user not found');
             }
-            console.log(user);
-            res.send({ user });
+
+            console.log("updated", user);
+            res.status(200).json({
+                message: "Updation Successful!",
+                user
+            });
 
         })
         .catch((e) => {

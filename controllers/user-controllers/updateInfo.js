@@ -1,5 +1,6 @@
 const { User } = require('../../models/users');
 const _ = require('lodash');
+const { ObjectID } = require('mongodb');
 
 var updateInfo = (req, res) => {
     var id = req.params.id;
@@ -9,12 +10,13 @@ var updateInfo = (req, res) => {
         console.log('Id enterd is invalid');
         return res.status(400).send(err);
     }
-
-    User.findOneAndUpdate({
-        _id: id
-    },
+    console.log("Only phone no. and name will be updated by user.");
+    User.findOneAndUpdate(
         {
-            $set: body  //it is used this way in mongoose
+            _id: id
+        },
+        {
+            $set: body
         },
         {
             new: true
@@ -24,8 +26,11 @@ var updateInfo = (req, res) => {
                 res.status(404).send();
                 return console.log('user not found');
             }
-            console.log(user);
-            res.send({ user });
+            res.status(200).send("Updation Successful!");
+            // json({
+            //     msg: "Updation Successful!",
+            //     updated_user: user
+            // });
 
         })
         .catch((e) => {

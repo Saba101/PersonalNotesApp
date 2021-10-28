@@ -3,7 +3,7 @@
 
 require('./../db');
 require("dotenv").config();
-require('./adminCredentials.js')
+// require('./adminCredentials.js')
 
 const express = require('express');
 const router = require("express").Router();
@@ -31,39 +31,52 @@ app.listen(process.env.PORT || 3000, () => {
 //(1)
 var authenticateAdmin = (req, res, next) => {
   var token = req.header('x-auth');
-  User.verifyAdmin(token).then((user) => {
-    if (!user) {
-      res.status(400).json({
-        error: "You aren't authorized for this request!"
-      });
-      return Promise.reject();
-    }
-    req.user = user;
-    req.token = token;
-    next();
+  if (!token) {
+    console.log("ERRR...If you are admin.. Add your token in header!");
+    res.status(400).send("header: token not found!");
+  }
+  else {
+    User.verifyAdmin(token).then((user) => {
+      if (!user) {
+        res.status(400).json({
+          error: "You aren't authorized for this request!"
+        });
+        return Promise.reject();
+      }
+      req.user = user;
+      req.token = token;
+      next();
 
-  }).catch((e) => {
-    res.status(401).send();
-  });
+    }).catch((e) => {
+      res.status(401).send();
+    });
+  }
 };
 
 //(2)
 var authenticateUser = (req, res, next) => {
-  var token = req.header('x-login-auth');
-  User.findByToken(token).then((user) => {
-    if (!user) {
-      res.status(400).json({
-        error: "Incorrect Token OR Not Logged In. Please check!"
-      });
-      return Promise.reject();
-    }
-    req.user = user;
-    req.token = token;
-    next();
 
-  }).catch((e) => {
-    res.status(401).send();
-  });
+  var token = req.header('x-login-auth');
+  if (!token) {
+    console.log("ERRR... Add your login-token in header!");
+    res.status(400).send("header: login-token not found!");
+  }
+  else {
+    User.findByToken(token).then((user) => {
+      if (!user) {
+        res.status(400).json({
+          error: "User not found!"
+        });
+        return Promise.reject();
+      }
+      req.user = user;
+      req.token = token;
+      next();
+
+    }).catch((e) => {
+      res.status(401).send("Token isn't yours? OR You aren't logged in - Check Again!");
+    });
+  }
 
 };
 
@@ -93,14 +106,14 @@ app.post('/users/register', authenticateAdmin, register);
 app.get('/users', authenticateAdmin, getAllUsers);
 app.get('/users/:id', authenticateAdmin, getUser);
 app.patch('/users/:id', authenticateAdmin, updateUser);
-app.delete('users/:id', authenticateAdmin, deleteUser);
+app.delete('/users/:id', authenticateAdmin, deleteUser);
 
 // //User Routes
-app.post('/gen-password/:link/:token', passwordGenerator)
+app.get('/gen-password/:link/:token', passwordGenerator)
 app.patch('/:id', authenticateUser, updateInfo);
 
-app.get('/my-notes', authenticateUser, getNotes);
-// app.post('/my-notes/:id', authenticateUser, createNotes)
+// app.get('/my-notes', authenticateUser, getNotes);
+// app.post('/my-notes/:id', authenticateUser, createNotes);
 // app.patch('/my-notes/:id', authenticateUser, updateNotes)
 // app.delete('/my-notes/:id', authenticateUser, deleteNotes)
 
@@ -109,15 +122,15 @@ app.get('/my-notes', authenticateUser, getNotes);
 app.post('/users/login', (req, res) => {
 
   var body = _.pick(req.body, ['email', 'password']);
+  console.log("Logging in user: ", body);
+
   User.findByCredentials(body.email, body.password).then((user) => {
-    if (!user) {
-      return Promise.reject();
-    }
-    return user.generateLoginToken().then((token) => {
+    // console.log(user);
+    user.generateLoginToken().then((token) => {
       res.header('x-login-auth', token).json({
-        _id: user.id,
-        email: user.email,
-        msg: "Login Successful!\nTake your token from response-header. Use it as header with all your request for authorization "
+        msg: `Login Successful! 
+        ***Take your token from response-header***. Use it as header with all your request for authorization `,
+        user
       })
     })
   }).catch((e) => {
