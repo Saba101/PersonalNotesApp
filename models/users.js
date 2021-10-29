@@ -134,16 +134,18 @@ UserSchema.statics.findByToken = function (token) {
 
     try {
         decoded = jwt.verify(token, process.env.JWT_LOGIN_SECRET);
+        // console.log("decoded successfully!");
+
+        return user.findOne({
+            '_id': decoded._id,
+            'login.token': token,
+            'login.status': true
+        });
+
     } catch (e) {
         console.log("Bad Request - Token isn't yours?");
         return Promise.reject();
     }
-
-    return user.findOne({
-        '_id': decoded._id,
-        'login.token': token,
-        'login.status': true
-    });
 };
 
 UserSchema.statics.findByCredentials = function (email, password) {
@@ -151,18 +153,35 @@ UserSchema.statics.findByCredentials = function (email, password) {
 
     return User.findOne({ email }).then((user) => {
         if (!user) {
+            res.status(400).send("User not found!");
             return Promise.reject();
         }
-        return new Promise((resolve, reject) => {
-            bcrypt.compare(password, user.password, (err, res) => {
-                if (res) {
-                    resolve(user);
-                } else {
-                    console.log("Password Issue!");
-                    reject();
-                }
-            })
-        });
+        if (user.blocked == true) {
+            res.status(401).send("Your account is temporarily blocked. Please contact admin!");
+            // res.redirect('/'); 
+            return Promise.reject();
+        }
+        else {
+            return new Promise((resolve, reject) => {
+                bcrypt.compare(password, user.password, (err, res) => {
+                    if (res) {
+                        //email found - user not blocked - attempts not max - password okay
+                        resolve(user);
+
+                    } else {  //if password is incorrect
+                        if (user.login.loginAttempts == 3) {
+                            //so this is 4th one now block this stupid/fraud user! xd
+                            user.blocked = true;
+                            res.status(401).send("Your account is temporarily blocked. Please contact admin!");
+                            reject();
+                        }
+                        user.login.loginAttempts + 1;
+                        res.status(401).send("Unauthorized Request:  using wrong credentials");
+                        reject();
+                    }
+                })
+            });
+        }
     });
 }
 
@@ -197,11 +216,11 @@ UserSchema.statics.verifyAdmin = function (token) {
     });
 }
 
-UserSchema.statics.removeToken = function (token) {
+UserSchema.methods.removeToken = function (token) {
     // $pull: //allows you to remove things from array
     var user = this;
 
-    user.update({
+    return user.update({
         login: {
             $pull: {
                 token: { token }
@@ -210,7 +229,8 @@ UserSchema.statics.removeToken = function (token) {
                 status: false
             }
         }
-    })
+    });
+
 }
 
 var User = mongoose.model('User', UserSchema);

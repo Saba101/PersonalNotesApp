@@ -65,6 +65,7 @@ var passwordGenerator = (req, res) => {
             bcrypt.hash(password, salt, (err, hash) => {
                 // console.log(hash);
                 password = hash;
+
                 var user = new User(decodedToken);
                 user.password = password;
                 if (user.type == 'admin') {
